@@ -20,11 +20,11 @@ Requirements:
 Installation:
  - Clone repository using git: git clone https://github.com/Molecular-virology-lab/bwacycle.git or download ZIP-archive to your computer.
  - The following folder structure is prefered:
-    -root data analysis folder
-      -Reference
-      -stuff
-      -map_all.py
-      -folders with FASTQ files from your sequencer
+    -root data analysis folder/ <br/>
+      -Reference<br/>
+      -stuff<br/>
+      -map_all.py<br/>
+      -folders with FASTQ files from your sequencer<br/>
      
  Usage:
   - mount to folder with your FASTQ files
