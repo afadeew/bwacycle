@@ -8,7 +8,7 @@ Description of files and folders:
  
 Requirements:
  - Python version 3.6 or higher. (Original installer from Python website (https://www.python.org/downloads/) or Miniconda (https://docs.conda.io/en/latest/miniconda.html))
- - Matplotlib library (Can be installed via pip: ```sh pip3 install matplotlib```)
+ - Matplotlib library (Can be installed via pip: ```pip3 install matplotlib```)
  - FastQC quality assessment tool (https://www.bioinformatics.babraham.ac.uk/projects/fastqc/). Jar files are provided in stuff folder
  - Trimmomatic data trimming tool (http://www.usadellab.org/cms/?page=trimmomatic). Jar files are provided in stuff folder
  - BWA sequence aligner (https://github.com/lh3/bwa). Linux and Windows binaries are provided in stuff folder
@@ -20,17 +20,17 @@ Requirements:
 Installation:
  - Clone repository using git: git clone https://github.com/Molecular-virology-lab/bwacycle.git or download ZIP-archive to your computer.
  - The following folder structure is prefered:<br/>
-    -root data analysis folder/ <br/>
-      -Reference<br/>
-      -stuff<br/>
-      -map_all.py<br/>
-      -folders with FASTQ files from your sequencer<br/>
+      - root data analysis folder/ <br/>
+                                 - Reference<br/>
+                                 - stuff<br/>
+                                 - map_all.py<br/>
+                                 - folders with FASTQ files from your sequencer<br/>
      
  Usage:
   - mount to folder with your FASTQ files
   - prepare sample list in tab-delimited text file with 3 columns: sample id used in Illumina sample sheet, sample name, sample number in Illumina sample sheet and save it in the same directory with FASTQ files.<br/>
-  Example sample list:<br\>
-  36 A/Example/01/2000 45<br\>
+  Example sample list:<br/>
+  36 A/Example/01/2000 45<br/>
   (In this example script will use files 36_S45_L001_R1_001.fastq.gz and 36_S45_L001_R2_001.fastq.gz and will generate FASTA files with strain name A/Example/01/2000)
   
   - To run BWAcycle type ```sh python3 ../map_all.py -list <provide your sample list> -mode <select one avaliable>```
