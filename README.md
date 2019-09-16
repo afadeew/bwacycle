@@ -18,7 +18,7 @@ Requirements:
  - Windows binaries were built using Cygwin (https://cygwin.com/). All necessary Cygwin dlls are provided in stuff folder
 
 Installation:
- - Clone repository using git: git clone https://github.com/Molecular-virology-lab/bwacycle.git or download ZIP-archive to your computer.
+ - Clone repository using git: ```git clone https://github.com/Molecular-virology-lab/bwacycle.git``` or download ZIP-archive to your computer.
  - The following folder structure is prefered:<br/>
       - root data analysis folder/ <br/>
                                  - Reference<br/>
@@ -33,7 +33,8 @@ Installation:
   36[tab]A/Example/01/2000[tab]45<br/><br/>
   (In this example script will use files 36_S45_L001_R1_001.fastq.gz and 36_S45_L001_R2_001.fastq.gz and will generate FASTA files with strain name A/Example/01/2000)
   
-  - To run BWAcycle type ```python3 ../map_all.py -list <provide your sample list> -mode <select one avaliable>```
+  - To run BWAcycle on Windows type ```python3 ..\map_all.py -list <provide your sample list> -mode <select one avaliable>```
+  - To run BWAcycle on Linux type ```python3 ../map_all.py -list <provide your sample list> -mode <select one avaliable>```
   
   Avaliable modes:<br/>
    - A (search for H1-H16, N1-N9, PB2, PB1, PA, NP, M, NS)<br/>
