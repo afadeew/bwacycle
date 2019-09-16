@@ -29,8 +29,8 @@ Installation:
  Usage:
   - mount to folder with your FASTQ files
   - prepare sample list in tab-delimited text file with 3 columns: sample id used in Illumina sample sheet, sample name, sample number in Illumina sample sheet and save it in the same directory with FASTQ files.<br/>
-  Example sample list:<br/>
-  36[tab]A/Example/01/2000[tab]45<br/>
+  Example sample list:<br/><br/>
+  36[tab]A/Example/01/2000[tab]45<br/><br/>
   (In this example script will use files 36_S45_L001_R1_001.fastq.gz and 36_S45_L001_R2_001.fastq.gz and will generate FASTA files with strain name A/Example/01/2000)
   
   - To run BWAcycle type ```python3 ../map_all.py -list <provide your sample list> -mode <select one avaliable>```
