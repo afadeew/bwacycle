@@ -9,22 +9,22 @@ Description of files and folders:
 Requirements:
  - Python version 3.6 or higher. (Original installer from Python website (https://www.python.org/downloads/) or Miniconda (https://docs.conda.io/en/latest/miniconda.html))
  - Matplotlib library (Can be installed via pip: pip3 install matplotlib)
- - FastQC quality assessment tool (https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) provided in stuff folder
- - Trimmomatic data trimming tool (http://www.usadellab.org/cms/?page=trimmomatic) provided in stuff folder
- - BWA sequence aligner (https://github.com/lh3/bwa) provided in stuff folder
- - Samtools and Bcftools - software for SAM and BAM files manipulating (https://github.com/samtools/) provided in stuff folder
- - Bam-readcount tool (https://github.com/genome/bam-readcount) provided in stuff folder
+ - FastQC quality assessment tool (https://www.bioinformatics.babraham.ac.uk/projects/fastqc/). Jar files are provided in stuff folder
+ - Trimmomatic data trimming tool (http://www.usadellab.org/cms/?page=trimmomatic). Jar files are provided in stuff folder
+ - BWA sequence aligner (https://github.com/lh3/bwa). Linux and Windows binaries are provided in stuff folder
+ - Samtools and Bcftools - software for SAM and BAM files manipulating (https://github.com/samtools/). Linux and Windows binaries are provided in stuff folder
+ - Bam-readcount tool (https://github.com/genome/bam-readcount). Linux and Windows binaries are provided in stuff folder
  - FastQC and Trimmomatic reqiure Java to be installed
  - Windows binaries were built using Cygwin (https://cygwin.com/). All necessary Cygwin dlls are provided in stuff folder
 
 Installation:
  - Clone repository using git: git clone https://github.com/Molecular-virology-lab/bwacycle.git or download ZIP-archive to your computer.
  - The following folder structure is prefered:
-   -root data analysis folder
-     -Reference
-     -stuff
-     -map_all.py
-     -folders with FASTQ files from your sequencer
+    -root data analysis folder
+      -Reference
+      -stuff
+      -map_all.py
+      -folders with FASTQ files from your sequencer
      
  Usage:
   - mount to folder with your FASTQ files
