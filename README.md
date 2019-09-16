@@ -9,7 +9,7 @@ Description of files and folders:
 Requirements:
  - Python version 3.6 or higher. (Original installer from Python website (https://www.python.org/downloads/) or Miniconda (https://docs.conda.io/en/latest/miniconda.html))
  - Matplotlib library (Can be installed via pip: ```pip3 install matplotlib```)
- - FastQC quality assessment tool (https://www.bioinformatics.babraham.ac.uk/projects/fastqc/). Jar files are provided in stuff folder
+ - FastQC quality assessment tool (https://www.bioinformatics.babraham.ac.uk/projects/fastqc/). For Windows Jar files are provided in stuff folder. For Linux, please, install FastQC via system package management tool. (On Ubuntu-based systems ```sudo apt-get install fastqc```)
  - Trimmomatic data trimming tool (http://www.usadellab.org/cms/?page=trimmomatic). Jar files are provided in stuff folder
  - BWA sequence aligner (https://github.com/lh3/bwa). Linux and Windows binaries are provided in stuff folder
  - Samtools and Bcftools - software for SAM and BAM files manipulating (https://github.com/samtools/). Linux and Windows binaries are provided in stuff folder
