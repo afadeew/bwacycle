@@ -288,14 +288,14 @@ def get_cons2(sample_number, gene, ref_file, step):
 				for j in range(len(rc[i]["INDEL"])):
 					if int(rc[i]["INDEL"][j][1]) > indel_cov[1]:
 						indel_cov = [j, int(rc[i]["INDEL"][j][1])]
-				if rc[i]["INDEL"][indel_cov[0]][0][0] == "+" and float(indel_cov[1])/float(rc[i]["COV"]) > 0.25:
+				if rc[i]["INDEL"][indel_cov[0]][0][0] == "+" and float(indel_cov[1])/float(rc[i]["COV"]) > 0.5:
 					pos += rc[i]["INDEL"][indel_cov[0]][0][1:]
-					print("Found more than 25 percent of insertions in position "+str(i)+". Please review basecount data.\n")
-					probl_file.write("Found more than 25 percent of insertions in position "+str(i)+". Please review basecount data.\n")
-				if rc[i]["INDEL"][indel_cov[0]][0][0] == "-" and float(indel_cov[1])/float(rc[i]["COV"]) > 0.25:
+					print("Found more than 50 percent of insertions in position "+str(i)+". Please review basecount data.\n")
+					probl_file.write("Found more than 50 percent of insertions in position "+str(i)+". Please review basecount data.\n")
+				if rc[i]["INDEL"][indel_cov[0]][0][0] == "-" and float(indel_cov[1])/float(rc[i]["COV"]) > 0.5:
 					dels = [len(rc[i]["INDEL"][indel_cov[0]][0][1:]), int(rc[i]["INDEL"][indel_cov[0]][1])]
-					print("Found more than 25 percent of deletions in position "+str(i)+". Please review basecount data.\n")
-					probl_file.write("Found more than 25 percent of deletions in position "+str(i)+". Please review basecount data.\n")
+					print("Found more than 50 percent of deletions in position "+str(i)+". Please review basecount data.\n")
+					probl_file.write("Found more than 50 percent of deletions in position "+str(i)+". Please review basecount data.\n")
 			con += pos
 	if step != '':
 		out_file = open(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_'+step+'.fasta', 'w')
