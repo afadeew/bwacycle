@@ -73,10 +73,10 @@ def conc_data(sample_number):
 def fastqc_data(sample_number, fastqc_path):
 	#Запускаем FASTQC для оценки качества в обработанном FASTQ
 	print("Run FastQC to obtain quality report for sample "+sample_number+". Further output from FastQC:\n")
-	if not os.path.isfile('/usr/bin/fastqc'):
-		fastqc_par = 'java -Xmx512m -classpath '+fastqc_path+';'+fastqc_path+'/sam-1.103.jar;'+fastqc_path+'/jbzip2-0.9.jar -Djava.awt.headless=true uk.ac.babraham.FastQC.FastQCApplication '+sample_number+os.sep+sample_number+'.fastq'
+	if os.sep == "/":
+		fastqc_par = 'java -Xmx512m -classpath '+fastqc_path+':'+fastqc_path+'/sam-1.103.jar:'+fastqc_path+'/jbzip2-0.9.jar -Djava.awt.headless=true uk.ac.babraham.FastQC.FastQCApplication '+sample_number+os.sep+sample_number+'.fastq'
 	else:
-		fastqc_par = 'fastqc '+sample_number+os.sep+sample_number+'.fastq'
+		fastqc_par = 'java -Xmx512m -classpath '+fastqc_path+';'+fastqc_path+'/sam-1.103.jar;'+fastqc_path+'/jbzip2-0.9.jar -Djava.awt.headless=true uk.ac.babraham.FastQC.FastQCApplication '+sample_number+os.sep+sample_number+'.fastq'
 	os.system(fastqc_par)
 	print("FastQC finished\n")
 	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
@@ -146,6 +146,9 @@ def copy_result(sample_number, gene, HA, NA):
 	src = sample_number+os.sep+gene+os.sep+sample_number+"_"+gene+"_BaseQuality.svg"
 	dest = "result"+os.sep+subtype+os.sep+gene+os.sep+"svg"+os.sep+sample_number+"_"+gene+"_BaseQuality.svg"
 	shutil.copyfile(src, dest)
+	src = sample_number+os.sep+gene+os.sep+sample_number+"_"+gene+"_MapQuality.svg"
+	dest = "result"+os.sep+subtype+os.sep+gene+os.sep+"svg"+os.sep+sample_number+"_"+gene+"_MapQuality.svg"
+	shutil.copyfile(src, dest)
 	src = sample_number+os.sep+gene+os.sep+sample_number+"_"+gene+"_Shannon.png"
 	dest = "result"+os.sep+subtype+os.sep+gene+os.sep+"png"+os.sep+sample_number+"_"+gene+"_Shannon.png"
 	shutil.copyfile(src, dest)
@@ -155,19 +158,19 @@ def copy_result(sample_number, gene, HA, NA):
 	src = sample_number+os.sep+gene+os.sep+sample_number+"_"+gene+"_BaseQuality.png"
 	dest = "result"+os.sep+subtype+os.sep+gene+os.sep+"png"+os.sep+sample_number+"_"+gene+"_BaseQuality.png"
 	shutil.copyfile(src, dest)
-	if not os.path.isfile("result"+os.sep+subtype+os.sep+gene+os.sep+"fasta"+"total.fasta"):
-		src = "result"+os.sep+subtype+os.sep+gene+os.sep+"fasta"+os.sep+sample_number+"_"+gene+".fasta"
-		dest = "result"+os.sep+subtype+os.sep+gene+os.sep+"fasta"+os.sep+"total.fasta"
-		shutil.copyfile(src, dest)
-	else:
-		with open("result"+os.sep+subtype+os.sep+gene+os.sep+"fasta"+os.sep+sample_number+"_"+gene+".fasta", 'r') as inp:
-			fa = inp.readlines()
+	src = sample_number+os.sep+gene+os.sep+sample_number+"_"+gene+"_MapQuality.png"
+	dest = "result"+os.sep+subtype+os.sep+gene+os.sep+"png"+os.sep+sample_number+"_"+gene+"_MapQuality.png"
+	shutil.copyfile(src, dest)
+	with open("result"+os.sep+subtype+os.sep+gene+os.sep+"fasta"+os.sep+sample_number+"_"+gene+".fasta", 'r') as inp:
+		fa = inp.readlines()
+	ft = []
+	if os.path.isfile("result"+os.sep+subtype+os.sep+gene+os.sep+"fasta"+"total.fasta"):
 		with open("result"+os.sep+subtype+os.sep+gene+os.sep+"fasta"+os.sep+"total.fasta", 'r') as total:
 			ft = total.readlines()
-		ft+=fa
-		with open("result"+os.sep+subtype+os.sep+gene+os.sep+"fasta"+os.sep+"total.fasta", 'w') as outp:
-			for item in ft:
-				outp.write(item)
+	ft+=fa
+	with open("result"+os.sep+subtype+os.sep+gene+os.sep+"fasta"+os.sep+"total.fasta", 'w') as outp:
+		for item in ft:
+			outp.write(item)
 	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
 
 def html_report(report_file, report_arr, sample_number):
