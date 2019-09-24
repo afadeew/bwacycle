@@ -18,6 +18,7 @@ fastqc_path = '..'+os.sep+'stuff'+os.sep+'FastQC'
 bwa_path = '..'+os.sep+'stuff'+os.sep+'bwa'+os.sep
 samtools_path = '..'+os.sep+'stuff'+os.sep
 bam_readcount_path = '..'+os.sep+'stuff'+os.sep
+minimap_path = '..'+os.sep+'stuff'+os.sep
 reference_path = '..'+os.sep+'Reference'+os.sep
 
 
@@ -194,19 +195,19 @@ def html_report(report_file, report_arr, sample_number):
 	bqfiledata = bqfile.read()
 	bqdata = base64.b64encode(bqfiledata)
 	bqstring = bqdata.decode()
-	report_arr['read_quality'] = bqstring
+	report_arr[sample_number]['read_quality'] = bqstring
 	bqfile.close()
 	scfile = open(sample_number+os.sep+sample_number+'_per_base_sequence_content.png', 'rb')
 	scfiledata = scfile.read()
 	scdata = base64.b64encode(scfiledata)
 	scstring = scdata.decode()
-	report_arr['sequence_content'] = scstring
+	report_arr[sample_number]['sequence_content'] = scstring
 	scfile.close()
 	ldfile = open(sample_number+os.sep+sample_number+'_sequence_length_distribution.png', 'rb')
 	ldfiledata = ldfile.read()
 	lddata = base64.b64encode(ldfiledata)
 	ldstring = lddata.decode()
-	report_arr['length_distribution'] = ldstring
+	report_arr[sample_number]['length_distribution'] = ldstring
 	ldfile.close()
 	html_page = "<html>\n<head>\n</head>\n<body>\n<p>\n<b>Sequence analysis report</b>\n</p>\n<br/>\n<table>\n<tr>\n"
 	for i in range(1,13):
@@ -313,10 +314,11 @@ def get_stats(cov_arr, sample_number, gene, sample_name):
 	#Получение консенсусной последовательности, таблиц и графиков из массива частот встречаемости
 	print("Calculating statistics for sample "+sample_number+" and gene "+gene+"\n")
 	t = open(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'.table', 'w')
-	t.write("Position\tA\tC\tG\tT\tpA\tpC\tpG\tpT\tShannon\tCoverage\tConsensus\tA_SNP\tC_SNP\tG_SNP\tT_SNP\n")
+	t.write("Position\tA\tC\tG\tT\tpA\tpC\tpG\tpT\tShannon\tCoverage\tConsensus\tDiversity\tA_SNP\tC_SNP\tG_SNP\tT_SNP\n")
 	cons = cov_arr.pop("CON")
 	Shan = []
 	Cov = []
+	Div = []
 	bq_arr = []
 	mq_arr = []
 	sln = len(cov_arr)
@@ -356,8 +358,11 @@ def get_stats(cov_arr, sample_number, gene, sample_name):
 		if PT != 0.0:
 			TENT = -1*PT*math.log2(PT)
 		ShanJ = AENT + GENT + CENT + TENT
+		DivJ = 0
+		if CovJ != 0:
+			DivJ = (Acount*Ccount + Acount*Gcount + Acount*Tcount + Ccount*Gcount + Ccount*Tcount + Gcount*Tcount)/((CovJ*CovJ-CovJ)/2)
 #Вывод результатов в таблицу
-		t.write(str(j)+"\t"+str(Acount)+"\t"+str(Ccount)+"\t"+str(Gcount)+"\t"+str(Tcount)+"\t"+str(PA)+"\t"+str(PC)+"\t"+str(PG)+"\t"+str(PT)+"\t"+str(ShanJ)+"\t"+str(CovJ)+"\t"+pos)
+		t.write(str(j)+"\t"+str(Acount)+"\t"+str(Ccount)+"\t"+str(Gcount)+"\t"+str(Tcount)+"\t"+str(PA)+"\t"+str(PC)+"\t"+str(PG)+"\t"+str(PT)+"\t"+str(ShanJ)+"\t"+str(CovJ)+"\t"+pos+"\t"+str(DivJ))
 #Поиск SNP
 		if (PA > 0.05 and PA < 0.95):
 			t.write("\t"+str(PA))
@@ -378,6 +383,7 @@ def get_stats(cov_arr, sample_number, gene, sample_name):
 		t.write("\n")
 		Shan.append(ShanJ)
 		Cov.append(CovJ)
+		Div.append(DivJ)
 	t.close()
 	print("Calculation finished\n")
 #Рисование графика энтропии Шеннона
@@ -414,9 +420,9 @@ def get_stats(cov_arr, sample_number, gene, sample_name):
 	print("Shannon graph ready\n")
 #Рисование графика покрытия
 	print("Drawing coverage graph\n")
-	m = round(statistics.mean(Cov), 2)
+	m = round(statistics.median(Cov), 2)
 	ppl.plot(ks, Cov, 'b', ks, cov_lim_arr, 'r--')
-	ppl.title(sample_name+" "+gene+", mean coverage = "+str(m))
+	ppl.title(sample_name+" "+gene+", median coverage = "+str(m))
 	ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_Coverage.svg')
 	ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_Coverage.png')
 	print("Coverage graph ready\n")
@@ -424,9 +430,9 @@ def get_stats(cov_arr, sample_number, gene, sample_name):
 	ppl.cla()
 #Рисование графика качества прочтения
 	print("Drawing read quality graph\n")
-	bqm = round(statistics.mean(bq_arr), 2)
+	bqm = round(statistics.median(bq_arr), 2)
 	ppl.plot(ks, bq_arr, 'b', ks, qua_lim_arr, 'r--')
-	ppl.title(sample_name+" "+gene+", mean base quality = "+str(bqm))
+	ppl.title(sample_name+" "+gene+", median base quality = "+str(bqm))
 	ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_BaseQuality.svg')
 	ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_BaseQuality.png')
 	print("Quality graph ready\n")
@@ -434,12 +440,22 @@ def get_stats(cov_arr, sample_number, gene, sample_name):
 	ppl.cla()
 #Рисование графика качества выравнивания
 	print("Drawing mapping quality graph\n")
-	mqm = round(statistics.mean(mq_arr), 2)
+	mqm = round(statistics.median(mq_arr), 2)
 	ppl.plot(ks, mq_arr, 'b', ks, qua_lim_arr, 'r--')
-	ppl.title(sample_name+" "+gene+", mean mapping quality = "+str(mqm))
+	ppl.title(sample_name+" "+gene+", median mapping quality = "+str(mqm))
 	ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_MapQuality.svg')
 	ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_MapQuality.png')
 	print("Quality graph ready\n")
+	ppl.clf()
+	ppl.cla()
+#Рисование графика неоднородности
+	print("Drawing sequence diversity graph\n")
+	sdm = statistics.mean(Div)
+	ppl.plot(ks, Div, 'b')
+	ppl.title(sample_name+" "+gene+", mean sequence diversity = "+str(sdm))
+	ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_SeqDiversity.svg')
+	ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_SeqDiversity.png')
+	print("Sequence diversity ready\n")
 	ppl.clf()
 	ppl.cla()
 	with open(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_problems.txt', 'r') as probl_file:
@@ -453,6 +469,13 @@ def get_stats(cov_arr, sample_number, gene, sample_name):
 	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
 	return ans
 
+def run_minimap2(ref_file, sample_number, gene, step):
+	#Выравнивание ридов с minimap2
+	print("Align reads by Minimap2 for sample "+sample_number+" and gene "+gene+". Further output from Minimap2:\n")
+	minimap_cmd = minimap_path+'minimap2 -x sr -R "@RG\tID:'+sample_number+'\tSM:'+gene+'\tLB:library1\t" -t '+str(os.cpu_count()-1)+' --end-bonus=1 -2 -a -o '+sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_'+step+'.sam '+ref_file+' '+sample_number+os.sep+sample_number+'.fastq'
+	os.system(minimap_cmd)
+	print("Minimap2 alignment finished\n")
+	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
 
 
 print("Start\n")
@@ -461,6 +484,7 @@ descriptionText = "Illumina read mapping for influenza"
 parser = argparse.ArgumentParser(description = descriptionText,formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("-list", dest="list", required="true", help="Path to sample list file")
 parser.add_argument("-mode", dest="mode", required="true", help="Path to alignment file")
+parser.add_argument("-align_mode", dest="align_mode", required="false", help="Select alignment algorithm", default="bwa-mem")
 args = parser.parse_args()
 #Open sample list
 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
@@ -499,13 +523,14 @@ for sample in sample_list:
 	report_arr[sample_number]['name'] = sample_name
 	report_arr[sample_number]['plate'] = plate_number
 	report_arr[sample_number]['start_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-	copy_data(sample_number, plate_number)
 	sample_stats = open(sample_number+os.sep+sample_number+"_stats.txt", "w")
 	sample_stats.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-	trim_data(sample_number, trimmomatic_path)
-	ttl = conc_data(sample_number)
-	report_arr[sample_number]['read_number'] = ttl
-	fastqc_data(sample_number, fastqc_path)	
+	if not os.path.isfile(sample_number+".fastq"):
+		copy_data(sample_number, plate_number)
+		trim_data(sample_number, trimmomatic_path)
+		ttl = conc_data(sample_number)
+		report_arr[sample_number]['read_number'] = ttl
+		fastqc_data(sample_number, fastqc_path)	
 	second_run = []
 	mapping_arr = {}
 	print("First run for sample "+sample_number+"\n")
@@ -515,7 +540,10 @@ for sample in sample_list:
 		print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
 		if not os.path.isdir(sample_number+os.sep+gene):
 			os.mkdir(sample_number+os.sep+gene)
-		run_bwa(reference_path+gene+'.fasta', sample_number, gene, '1')
+		if args.align_mode == "bwa-mem":
+			run_bwa(reference_path+gene+'.fasta', sample_number, gene, '1')
+		elif args.align_mode == "minimap2":
+			run_minimap2(reference_path+gene+'.fasta', sample_number, gene, '1')
 		run_samtools2(sample_number, gene, '1')
 		mapped = parse_flagstat(sample_number, gene, '1')
 		mapping_arr[gene] = mapped[0]
@@ -578,8 +606,13 @@ for sample in sample_list:
 		print(gene+"\n")
 		print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
 		cnt = get_cons2(sample_number, gene, reference_path+gene+'.fasta', '1')
+		if len(cnt)-1 != len(cnt["CON"]):
+			print("Warning! Possible indels found!")
 		print("Length of gene "+gene+" of sample "+sample_number+" after first run: "+str(len(cnt)-1)+"\n")
-		run_bwa(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_1.fasta', sample_number, gene, '')
+		if args.align_mode == "bwa-mem":
+			run_bwa(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_1.fasta', sample_number, gene, '')
+		elif args.align_mode == "minimap2":
+			run_minimap2(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_1.fasta', sample_number, gene, '')
 		run_samtools2(sample_number, gene, '')
 		mapped1 = parse_flagstat(sample_number, gene, '')
 		mapping_arr[gene] = mapped1[0]
