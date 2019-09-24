@@ -150,6 +150,9 @@ def copy_result(sample_number, gene, HA, NA):
 	src = sample_number+os.sep+gene+os.sep+sample_number+"_"+gene+"_MapQuality.svg"
 	dest = "result"+os.sep+subtype+os.sep+gene+os.sep+"svg"+os.sep+sample_number+"_"+gene+"_MapQuality.svg"
 	shutil.copyfile(src, dest)
+	src = sample_number+os.sep+gene+os.sep+sample_number+"_"+gene+"_SeqDiversity.svg"
+	dest = "result"+os.sep+subtype+os.sep+gene+os.sep+"svg"+os.sep+sample_number+"_"+gene+"_SeqDiversity.svg"
+	shutil.copyfile(src, dest)
 	src = sample_number+os.sep+gene+os.sep+sample_number+"_"+gene+"_Shannon.png"
 	dest = "result"+os.sep+subtype+os.sep+gene+os.sep+"png"+os.sep+sample_number+"_"+gene+"_Shannon.png"
 	shutil.copyfile(src, dest)
@@ -161,6 +164,9 @@ def copy_result(sample_number, gene, HA, NA):
 	shutil.copyfile(src, dest)
 	src = sample_number+os.sep+gene+os.sep+sample_number+"_"+gene+"_MapQuality.png"
 	dest = "result"+os.sep+subtype+os.sep+gene+os.sep+"png"+os.sep+sample_number+"_"+gene+"_MapQuality.png"
+	shutil.copyfile(src, dest)
+	src = sample_number+os.sep+gene+os.sep+sample_number+"_"+gene+"_SeqDiversity.png"
+	dest = "result"+os.sep+subtype+os.sep+gene+os.sep+"png"+os.sep+sample_number+"_"+gene+"_SeqDiversity.png"
 	shutil.copyfile(src, dest)
 	with open("result"+os.sep+subtype+os.sep+gene+os.sep+"fasta"+os.sep+sample_number+"_"+gene+".fasta", 'r') as inp:
 		fa = inp.readlines()
@@ -314,7 +320,7 @@ def get_stats(cov_arr, sample_number, gene, sample_name):
 	#Получение консенсусной последовательности, таблиц и графиков из массива частот встречаемости
 	print("Calculating statistics for sample "+sample_number+" and gene "+gene+"\n")
 	t = open(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'.table', 'w')
-	t.write("Position\tA\tC\tG\tT\tpA\tpC\tpG\tpT\tShannon\tCoverage\tConsensus\tDiversity\tA_SNP\tC_SNP\tG_SNP\tT_SNP\n")
+	t.write("Position\tA\tC\tG\tT\tpA\tpC\tpG\tpT\tShannon\tCoverage\tDiversity\tConsensus\tA_SNP\tC_SNP\tG_SNP\tT_SNP\n")
 	cons = cov_arr.pop("CON")
 	Shan = []
 	Cov = []
@@ -359,10 +365,10 @@ def get_stats(cov_arr, sample_number, gene, sample_name):
 			TENT = -1*PT*math.log2(PT)
 		ShanJ = AENT + GENT + CENT + TENT
 		DivJ = 0
-		if CovJ != 0:
+		if CovJ > 10:
 			DivJ = (Acount*Ccount + Acount*Gcount + Acount*Tcount + Ccount*Gcount + Ccount*Tcount + Gcount*Tcount)/((CovJ*CovJ-CovJ)/2)
 #Вывод результатов в таблицу
-		t.write(str(j)+"\t"+str(Acount)+"\t"+str(Ccount)+"\t"+str(Gcount)+"\t"+str(Tcount)+"\t"+str(PA)+"\t"+str(PC)+"\t"+str(PG)+"\t"+str(PT)+"\t"+str(ShanJ)+"\t"+str(CovJ)+"\t"+pos+"\t"+str(DivJ))
+		t.write(str(j)+"\t"+str(Acount)+"\t"+str(Ccount)+"\t"+str(Gcount)+"\t"+str(Tcount)+"\t"+str(PA)+"\t"+str(PC)+"\t"+str(PG)+"\t"+str(PT)+"\t"+str(ShanJ)+"\t"+str(CovJ)+"\t"+str(DivJ)+"\t"+pos)
 #Поиск SNP
 		if (PA > 0.05 and PA < 0.95):
 			t.write("\t"+str(PA))
@@ -451,7 +457,17 @@ def get_stats(cov_arr, sample_number, gene, sample_name):
 #Рисование графика неоднородности
 	print("Drawing sequence diversity graph\n")
 	sdm = statistics.mean(Div)
-	ppl.plot(ks, Div, 'b')
+	vd = statistics.stdev(Div)
+	sdm_vector = []
+	sdmv_vector = []
+	sdmv2_vector = []
+	sdmv3_vector = []
+	for i in range(0, len(ks)):
+		sdm_vector.append(sdm)
+		sdmv_vector.append(sdm + vd)
+		sdmv2_vector.append(sdm + vd*2)
+		sdmv3_vector.append(sdm + vd *3)
+	ppl.plot(ks, Div, 'b', ks, sdm_vector, 'g--', ks, sdmv_vector, 'r--', ks, sdmv2_vector, 'y--',ks, sdmv3_vector, 'k--')
 	ppl.title(sample_name+" "+gene+", mean sequence diversity = "+str(sdm))
 	ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_SeqDiversity.svg')
 	ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_SeqDiversity.png')
@@ -466,6 +482,8 @@ def get_stats(cov_arr, sample_number, gene, sample_name):
 	ans.append(m)
 	ans.append(prob_count)
 	ans.append(bqm)
+	ans.append(mqm)
+	ans.append(sdm)
 	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
 	return ans
 
@@ -525,7 +543,7 @@ for sample in sample_list:
 	report_arr[sample_number]['start_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 	sample_stats = open(sample_number+os.sep+sample_number+"_stats.txt", "w")
 	sample_stats.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-	if not os.path.isfile(sample_number+".fastq"):
+	if not os.path.isfile(sample_number+os.sep+sample_number+".fastq"):
 		copy_data(sample_number, plate_number)
 		trim_data(sample_number, trimmomatic_path)
 		ttl = conc_data(sample_number)
@@ -640,7 +658,7 @@ for sample in sample_list:
 		sample_stats.write("\t"+el[0]+"\t"+str(el[1])+"\t")
 		if cover_ar.get(el[0]):
 			tm = cover_ar.get(el[0])
-			mapping_table.write(str(tm[0])+"\t"+str(tm[1])+"\t"+str(tm[2])+"\t"+str(tm[3])+"\n")
+			mapping_table.write(str(tm[0])+"\t"+str(tm[1])+"\t"+str(tm[2])+"\t"+str(tm[3])+"\t"+str(tm[4])+"\t"+str(tm[5])+"\n")
 			sample_stats.write(str(tm[0])+"\t"+str(tm[1])+"\t"+str(tm[2])+"\t"+str(tm[3])+"\n")
 		else:
 			mapping_table.write("< than 1 percent of total reads or not selected for analysis\n")
