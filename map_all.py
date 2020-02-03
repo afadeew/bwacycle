@@ -128,15 +128,16 @@ def run_bwa(ref_file, sample_number, step):
 	#Run BWA alingment
 	print("\nAlign reads by BWA mem for sample "+sample_number+". Further output from BWA mem:\n")
 	if data_type == "illumina":
-		pl = "ILLUMINA"
+		if (step == '' or step == 'v'):
+			bwa_cmd = bwa_path+'bwa mem -aM -R "@RG\\tID:'+sample_number+'\\tSM:'+sample_number+'\\tPL:ILLUMINA\\tLB:library1\\t" -t '+str(os.cpu_count())+' '+ref_file+' '+sample_number+os.sep+sample_number+'.fastq > '+sample_number+os.sep+sample_number+'_'+step+'.sam'
+		else:
+			bwa_cmd = bwa_path+'bwa mem -aM -R "@RG\\tID:'+sample_number+'\\tSM:'+sample_number+'\\tPL:ILLUMINA\\tLB:library1\\t" -t '+str(os.cpu_count())+' -k 13  -B 2 -O [4,4] -E [1,1] -L [3,3] -U 1 '+ref_file+' '+sample_number+os.sep+sample_number+'.fastq > '+sample_number+os.sep+sample_number+'_'+step+'.sam'
 	elif data_type == "nanopore":
 		pl = "NANOPORE"
-	if (step == '' or step == 'v') and data_type == "illumina":
-		bwa_cmd = bwa_path+'bwa mem -aM -R "@RG\\tID:'+sample_number+'\\tSM:'+sample_number+'\\tPL:'+pl+'\\tLB:library1\\t" -v 4 -t '+str(os.cpu_count())+' '+ref_file+' '+sample_number+os.sep+sample_number+'.fastq > '+sample_number+os.sep+sample_number+'_'+step+'.sam'
-	elif (step == '' or step == 'v') and data_type == "nanopore":
-		bwa_cmd = bwa_path+'bwa mem -aM -R "@RG\\tID:'+sample_number+'\\tSM:'+sample_number+'\\tPL:'+pl+'\\tLB:library1\\t" -v 4 -t '+str(os.cpu_count())+' -k 14 -W 20 -r 10 -A 1 -B 1 -O 1 -E 1 -L 0 '+ref_file+' '+sample_number+os.sep+sample_number+'.fastq > '+sample_number+os.sep+sample_number+'_'+step+'.sam'
-	else:
-		bwa_cmd = bwa_path+'bwa mem -aM -R "@RG\\tID:'+sample_number+'\\tSM:'+sample_number+'\\tPL:'+pl+'\\tLB:library1\\t" -v 4 -t '+str(os.cpu_count())+' -k 13  -B 2 -O [2,2] -L [1,1] -U 1 '+ref_file+' '+sample_number+os.sep+sample_number+'.fastq > '+sample_number+os.sep+sample_number+'_'+step+'.sam'
+		if (step == '' or step == 'v'):
+			bwa_cmd = bwa_path+'bwa mem -aM -R "@RG\\tID:'+sample_number+'\\tSM:'+sample_number+'\\tPL:NANOPORE\\tLB:library1\\t" -t '+str(os.cpu_count())+' -k 14 -W 20 -r 10 -A 1 -B 1 -O 1 -E 1 -L 0 '+ref_file+' '+sample_number+os.sep+sample_number+'.fastq > '+sample_number+os.sep+sample_number+'_'+step+'.sam'
+		else:
+			bwa_cmd = bwa_path+'bwa mem -aM -R "@RG\\tID:'+sample_number+'\\tSM:'+sample_number+'\\tPL:NANOPORE\\tLB:library1\\t" -t '+str(os.cpu_count())+' -k 13  -B 2 -O [2,2] -L [1,1] -E [1,1] -U 1 '+ref_file+' '+sample_number+os.sep+sample_number+'.fastq > '+sample_number+os.sep+sample_number+'_'+step+'.sam'
 	os.system(bwa_cmd)
 	print("\nBWA mem alignment finished\n")
 	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
@@ -218,7 +219,7 @@ def html_report(report_file, report_arr, sample_number):
 		html_page += '</tr>\n'
 	html_page += '</table><br/><br/><br/>\n<table>\n'
 	for sample in report_arr['sample_list']:
-		html_page += '<tr id='+sample+'>\n<td><h2>'+report_arr[sample]['sample_name']+'</h2><br/><br/>Sample name: '+report_arr[sample]['sample_name']+'<br/>Sample number: '+sample+'<br/>Number in samplesheet: '+report_arr[sample]['plate_number']+'<br/>Index 1: '+report_arr[sample]['index1']+'<br/>Index 2: '+report_arr[sample]['index2']+'<br/>Total read number: '+str(report_arr[sample]['read_number'])+'<br/><br/>\n<h3>Assembled genes: </h3>'
+		html_page += '<tr id='+sample+'>\n<td><h2>'+report_arr[sample]['sample_name']+'</h2><br/><br/>Sample name: '+report_arr[sample]['sample_name']+'<br/>Sample number: '+sample+'<br/>Number in samplesheet: '+report_arr[sample]['plate_number']+'<br/>Index 1: '+report_arr[sample]['index1']+'<br/>Index 2: '+report_arr[sample]['index2']+'<br/>Total read number: '+str(report_arr[sample]['read_number'])+'<br/>Segment selection results: '+str(report_arr[sample]['seg_stats'])+'<br/><br/>\n<h3>Assembled genes: </h3>'
 		for gene in report_arr[sample]['gene_list']:
 			html_page += '<a href="#'+sample+'_'+gene+'">'+gene+'</a><br/>'
 		html_page += '<br/><br/><h3>FASTQC report for quality trimmed data</h3><br/><br/><h4 >Per base quality distribution graph</h4><br/><img src="data:image/png;base64,'+report_arr[sample]['per_base_quality']+'"><br/><h4 >Per base sequence content graph</h4><br/><img src="data:image/png;base64,'+report_arr[sample]['per_base_sequence_content']+'"><br/><h4 >Sequence length distribution graph</h4><br/><img src="data:image/png;base64,'+report_arr[sample]['sequence_length_distribution']+'"><br/><h4 >Per gene read distribution graph</h4><br/><img src="data:image/png;base64,'+report_arr[sample]['read_distribution']+'"><br/>\n'
@@ -721,7 +722,7 @@ def parse_idxstats(sample_number, step):
 	surf_list = [{},{}]
 	gene_list = []
 	if data_type == 'illumina':
-		sens = 500
+		sens = 700
 	elif data_type =='nanopore':
 		sens = 25
 	with open(sample_number+os.sep+sample_number+'_'+step+'_idxstats.txt','r') as idx:
@@ -736,6 +737,9 @@ def parse_idxstats(sample_number, step):
 				if seg not in report_arr[sample_number].keys():
 					report_arr[sample_number][seg] = {}
 				report_arr[sample_number][seg]['mapped_reads'] = int(line_split[2])
+				if 'seg_stats' not in report_arr[sample_number].keys():
+					report_arr[sample_number]['seg_stats'] = {}
+				report_arr[sample_number]['seg_stats'][seg] = int(line_split[2])
 				if int(line_split[2]) > sens:
 					if seg in surface[0]:
 						surf_list[0][seg] = int(line_split[2])
@@ -752,14 +756,21 @@ def parse_idxstats(sample_number, step):
 	refs = []
 	if step == "s":
 		print("\nPrepare reference set\n")
-		for seq_record in SeqIO.parse(reference_path+args.mode+'.fasta', 'fasta'):
+		for seq_record in SeqIO.parse(reference_path+mode+'.fasta', 'fasta'):
 			refs.append(seq_record)
 		with open(sample_number+os.sep+sample_number+'_start_ref.fasta', 'w') as f:
+			ref_segs = ''
 			for gene in gene_list:
+				ref_segs = ref_segs + gene + ' '
 				for ref in refs:
 					if gene == ref.id:
 						f.write('>'+ref.id+'\n'+str(ref.seq)+'\n')
 		report_arr[sample_number]['gene_list'] = gene_list
+		samtools_cmd = samtools_path+'samtools view -b  -o '+sample_number+os.sep+sample_number+'_'+step+'_s_tmp.bam '+sample_number+os.sep+sample_number+'_s.bam '+ref_segs
+		os.system(samtools_cmd)
+		src = sample_number+os.sep+sample_number+'_'+step+'_s_tmp.bam'
+		dest = sample_number+os.sep+sample_number+'_s.bam'
+		shutil.move(src, dest)
 	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
 	return gene_list
 	
@@ -792,6 +803,10 @@ mapping_table = open('mapping_table.txt', 'w')
 mapping_table.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+'\n')
 mapping_table.close()
 report_arr = {}
+report_arr['mode'] = mode
+report_arr['align_mode'] = align_mode
+report_arr['data_type'] = data_type
+report_arr['list'] = args.list
 report_arr['sample_list'] = []
 for sample in sample_list:
 	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
@@ -852,11 +867,15 @@ for sample in sample_list:
 		print(gene+"\n")
 		if not os.path.isdir(sample_number+os.sep+gene):
 			os.mkdir(sample_number+os.sep+gene)
-	cnt0 = get_cons2(sample_number, sample_number+os.sep+sample_number+'_start_ref.fasta', 's')
 	surf1 = gene_list[len(gene_list)-2].split("_")
 	surf2 = gene_list[len(gene_list)-1].split("_")
 	subtype = surf1[1]+surf2[1]
 	report_arr[sample_number]['subtype'] = subtype
+	if subtype in ["H3N2", "H1pdmN1", "BHAvicBNAvic", "BHAyamBNAyam"]:
+		src = reference_path+subtype+'.fasta'
+		dest = sample_number+os.sep+sample_number+'_start_ref.fasta'
+		shutil.copyfile(src,dest)
+	cnt0 = get_cons2(sample_number, sample_number+os.sep+sample_number+'_start_ref.fasta', 's')
 	print("Subtype for sample: "+sample_number+" - "+subtype+"\n")
 	if not os.path.isfile(sample_number+os.sep+sample_number+'_ext_1.sam'):
 		if align_mode == "bwa-mem":
