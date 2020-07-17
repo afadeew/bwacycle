@@ -14,6 +14,8 @@ import zipfile
 import matplotlib.pyplot as ppl 
 from Bio import SeqIO
 from PIL import Image
+from multiprocessing import Pool
+#import numpy as np
 
 #Path to required files
 pth = os.path.dirname(os.path.abspath(__file__))
@@ -240,7 +242,7 @@ def html_report(report_file, report_arr, sample_number):
 				for el in report_arr[sample][gene]['Shannon5_SNPS'].keys():
 					html_page += '&rarr; '+str(el)+': Shannon enthropy value: '+str(report_arr[sample][gene]['Shannon5_SNPS'][el])+'<br/>'
 			html_page += 'FreeBayes SNP calling results: <br/>'
-			if report_arr[sample][gene]['length'] != report_arr[sample][gene]['length_rmdup']:
+			if run_fb == 'True' and report_arr[sample][gene]['length'] != report_arr[sample][gene]['length_rmdup']:
 				html_page += 'Warning! Length of sequence has changed after removing of PCR duplicates!<br/>'
 			if 'FB_SNPS' in report_arr[sample][gene].keys() and len(report_arr[sample][gene]['FB_SNPS']) > 0:
 				for el in report_arr[sample][gene]['FB_SNPS'].keys():
@@ -309,6 +311,8 @@ def get_cons2(sample_number, ref_file, step):
 		print("\nCalculating consensus for sample "+sample_number+" and gene "+gene+"\n")
 		con = ""
 		dels = [0,0]
+		if not os.path.isdir(sample_number+os.sep+gene):
+			os.mkdir(sample_number+os.sep+gene)
 		probl_file = open(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_problems'+step+'.txt', 'w')
 		ks = list(rc[gene].keys())
 		ks.sort()
@@ -382,15 +386,19 @@ def get_stats(rc_arr, sample_number, sample_name, report_arr):
 	ppl.savefig(sample_number+os.sep+sample_number+'_read_distribution.png')
 	ppl.clf()
 	ppl.cla()
-	with open(sample_number+os.sep+sample_number+'_rmdup_depth.txt', 'r') as dpth:
-		dpth_arr = dpth.readlines()
+	if os.path.isfile(sample_number+os.sep+sample_number+'_rmdup_depth.txt'):
+		with open(sample_number+os.sep+sample_number+'_rmdup_depth.txt', 'r') as dpth:
+			dpth_arr = dpth.readlines()
+	else:
+		dpth_arr = []
 	dp = {}
-	for el in dpth_arr:
-		el_sp = el.split("\t")
-		if el_sp[0] not in dp.keys():
-			dp[el_sp[0]] = [[], []]
-		dp[el_sp[0]][0].append(int(el_sp[1]))
-		dp[el_sp[0]][1].append(int(el_sp[2]))
+	if len(dpth_arr) != 0:
+		for el in dpth_arr:
+			el_sp = el.split("\t")
+			if el_sp[0] not in dp.keys():
+				dp[el_sp[0]] = [[], []]
+			dp[el_sp[0]][0].append(int(el_sp[1]))
+			dp[el_sp[0]][1].append(int(el_sp[2]))
 	#Получение консенсусной последовательности, таблиц и графиков из массива частот встречаемости
 	#Parsing nucleotide frequency array
 	ans = {}
@@ -524,10 +532,13 @@ def get_stats(rc_arr, sample_number, sample_name, report_arr):
 	#Рисование графика покрытия
 		print("\nDrawing coverage graph\n")
 		m = round(statistics.median(Cov), 2)
-		ppl.plot(ks, Cov, 'b', ks, cov_lim_arr, 'r--', dp[sample_name+'_'+gene][0], dp[sample_name+'_'+gene][1], 'g')
-		if len(ks) != len(dp[sample_name+'_'+gene][0]):
-			print("\nWarning! Segment length has changed after removing duplicates!")
-		ppl.title(sample_name+" "+gene+",\n coverage before (blue) and after (green) removing of PCR duplicates,\nmedian coverage before rmdup = "+str(m))
+		if len(dp) > 0:
+			ppl.plot(ks, Cov, 'b', ks, cov_lim_arr, 'r--', dp[sample_name+'_'+gene][0], dp[sample_name+'_'+gene][1], 'g')
+			if len(ks) != len(dp[sample_name+'_'+gene][0]):
+				print("\nWarning! Segment length has changed after removing duplicates!")
+		else:
+			ppl.plot(ks, Cov, 'b', ks, cov_lim_arr, 'r--')
+		ppl.title(sample_name+" "+gene+",\n coverage before (blue) and after (green) removal of PCR duplicates,\nmedian coverage before rmdup = "+str(m))
 		ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_Coverage.svg')
 		ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_Coverage.png')
 		print("\nCoverage graph ready\n")
@@ -601,7 +612,8 @@ def get_stats(rc_arr, sample_number, sample_name, report_arr):
 		report_arr[sample_number][gene]['mapquality'] = mqm
 		report_arr[sample_number][gene]['seqdiversity'] = sdm
 		report_arr[sample_number][gene]['shannon'] = mSh
-		report_arr[sample_number][gene]['length_rmdup'] = len(dp[sample_name+'_'+gene][0])
+		if run_fb == 'True':
+			report_arr[sample_number][gene]['length_rmdup'] = len(dp[sample_name+'_'+gene][0])
 		print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
 	return ans
 
@@ -721,10 +733,12 @@ def parse_idxstats(sample_number, step):
 	surface = [['A_H1pdm', 'A_H1av', 'A_H1hs', 'A_H2', 'A_H3', 'A_H4', 'A_H5', 'A_H6', 'A_H7', 'A_H8', 'A_H9', 'A_H10', 'A_H11', 'A_H12', 'A_H13', 'A_H14', 'A_H15', 'A_H16', 'A_H17','A_H18', 'B_BHAvic', 'B_BHAyam'], ['A_N1', 'A_N2', 'A_N3', 'A_N4', 'A_N5', 'A_N6', 'A_N7', 'A_N8', 'A_N9', 'A_N10', 'A_N11', 'B_BNAvic', 'B_BNAyam']]
 	surf_list = [{},{}]
 	gene_list = []
-	if data_type == 'illumina':
+	if data_type == 'illumina' and args.seg_sens == "1":
 		sens = 700
-	elif data_type =='nanopore':
+	elif data_type =='nanopore' and args.seg_sens == "1":
 		sens = 25
+	elif args.seg_sens != "1":
+		sens = int(args.seg_sens)
 	with open(sample_number+os.sep+sample_number+'_'+step+'_idxstats.txt','r') as idx:
 		for line in idx.readlines():
 			line_split = line.split("\t")
@@ -773,172 +787,223 @@ def parse_idxstats(sample_number, step):
 		shutil.move(src, dest)
 	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
 	return gene_list
+
+def sam_counter(sam_str):
+	sam_spl = sm_arr[sam_str].split("\t")
+	if int(sam_spl[1]) != 4:
+		return sam_spl[2]
+	else:
+		return 'unmapped'
 	
-	
+def select_segs_from_sam(sample_number, step):
+	with open(sample_number+os.sep+sample_number+'_'+step+'.sam', 'r') as sm:
+		sm_arr = sm.readlines()
+	pool = Pool(processes=os.cpu_count())
+	cnt_result = pool.map(sam_counter, range(0,len(sm_arr)))
+	refs = []
+	for seq_record in SeqIO.parse(reference_path+mode+'.fasta', 'fasta'):
+		refs.append(seq_record)
+	for ref in refs:
+		cn = cnt_result.count(ref.id)
 
 	
-print("Start\n")
+if __name__ == "__main__":
+	print("Start\n")
 #Parse input data
-descriptionText = "Illumina read mapping for Influenza A and B"
-parser = argparse.ArgumentParser(description = descriptionText,formatter_class=argparse.RawDescriptionHelpFormatter)
-parser.add_argument("-list", dest="list", required=True, help="Path to sample list file")
-parser.add_argument("-mode", dest="mode", required=False, help="Choose segment selection mode: all", default="all")
-parser.add_argument("-align_mode", dest="align_mode", required=False, help="Choose alignment algorithm: bwa-mem, minimap2", default="bwa-mem")
-parser.add_argument("-data_type", dest="data_type", required=False, help="Choose input data type: illumina, nanopore", default="illumina")
-args = parser.parse_args()
-mode = args.mode
-#mode = 'all'
-align_mode = args.align_mode
-#align_mode = 'bwa-mem'
-data_type = args.data_type
-#Open sample list
-print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-with open(args.list, 'r') as sl:
-	sample_list = sl.readlines()
-if not os.path.isdir('result'):
-	os.mkdir("result")
+	descriptionText = "Illumina read mapping for Influenza A and B"
+	parser = argparse.ArgumentParser(description = descriptionText,formatter_class=argparse.RawDescriptionHelpFormatter)
+	parser.add_argument("-list", dest="list", required=True, help="Path to sample list file")
+	parser.add_argument("-mode", dest="mode", required=False, help="Choose segment selection mode: all", default="all")
+	parser.add_argument("-align_mode", dest="align_mode", required=False, help="Choose alignment algorithm: bwa-mem, minimap2", default="bwa-mem")
+	parser.add_argument("-data_type", dest="data_type", required=False, help="Choose input data type: illumina, nanopore", default="illumina")
+	parser.add_argument("-seg_sens", dest="seg_sens", required=False, help="Manually set segment search threshold", default="1")
+	parser.add_argument("-run_fb", dest="run_fb", required=False, help="Switch on/off FreeBayes variant calling", default='True')
+	args = parser.parse_args()
+	mode = args.mode
+	#mode = 'all'
+	align_mode = args.align_mode
+	#align_mode = 'bwa-mem'
+	data_type = args.data_type
+	run_fb = args.run_fb
+	#Open sample list
+	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
+	with open(args.list, 'r') as sl:
+		sample_list = sl.readlines()
+	if not os.path.isdir('result'):
+		os.mkdir("result")
 
 #Open report file
-mapping_table = open('mapping_table.txt', 'w')
-mapping_table.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+'\n')
-mapping_table.close()
-report_arr = {}
-report_arr['mode'] = mode
-report_arr['align_mode'] = align_mode
-report_arr['data_type'] = data_type
-report_arr['list'] = args.list
-report_arr['sample_list'] = []
-for sample in sample_list:
-	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-	sample_splitted = sample.split()
-	sample_number = sample_splitted[0]
-	sample_name = sample_splitted[1]
-	plate_number = sample_splitted[2]
-	if len(sample_splitted) == 4:
-		index1 = sample_splitted[3]
-		index2 = ''
-	if len(sample_splitted) == 5:
-		index1 = sample_splitted[3]
-		index2 = sample_splitted[4]
-	report_arr[sample_number] = {}
-	report_arr[sample_number]['sample_number'] = sample_number
-	report_arr[sample_number]['sample_name'] = sample_name
-	report_arr[sample_number]['plate_number'] = plate_number
-	report_arr[sample_number]['index1'] = index1
-	report_arr[sample_number]['index2'] = index2
-	report_arr[sample_number]['start_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-	copy_data(sample_number, plate_number, data_type)
-	sample_stats = open(sample_number+os.sep+sample_number+"_stats.txt", "w")
-	sample_stats.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-	if not os.path.isfile(sample_number+os.sep+sample_number+".fastq") and data_type == 'illumina':
-		fastqc_data(sample_number+os.sep+sample_number+'_R1.fastq.gz')
-		fastqc_data(sample_number+os.sep+sample_number+'_R2.fastq.gz')
-		trim_data(sample_number, trimmomatic_path)
-		ttl = conc_data(sample_number)
-		fastqc_data(sample_number+os.sep+sample_number+'.fastq')
-	elif not os.path.isfile(sample_number+os.sep+sample_number+".fastq") and data_type == 'nanopore':
-		fastqc_data(sample_number+os.sep+sample_number+'_unfiltered.fastq.gz')
-		trim_data(sample_number, trimmomatic_path)
-		fastqc_data(sample_number+os.sep+sample_number+'.fastq')
-		with open(sample_number+os.sep+sample_number+'.fastq', 'r') as fq:
-			fq_arr = fq.readlines()
-			ttl = len(fq_arr)//4
-	else:
-		with open(sample_number+os.sep+sample_number+'.fastq', 'r') as fq:
-			fq_arr = fq.readlines()
-			ttl = len(fq_arr)//4
-	report_arr[sample_number]['read_number'] = ttl	
-	mapping_arr = {}
-	print("First run for sample "+sample_number+"\n")
-	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-	#gene_list = run_centifuge(sample_number, mode, ttl, report_arr)
-	if not os.path.isfile(sample_number+os.sep+sample_number+'_ext_s.sam'):
-		if align_mode == "bwa-mem":
-			run_bwa(reference_path+mode+'.fasta', sample_number, 's')
-		elif align_mode == "minimap2":
-			run_minimap2(reference_path+mode+'.fasta', sample_number, 's')
-	else:
-		dest = sample_number+os.sep+sample_number+'_s.sam'
-		src = sample_number+os.sep+sample_number+'_ext_s.sam'
-		shutil.copyfile(src, dest)
-	run_samtools2(sample_number, reference_path+mode+'.fasta', 's', report_arr)
-	gene_list = parse_idxstats(sample_number, 's')
-	for gene in gene_list:
-		print(gene+"\n")
-		if not os.path.isdir(sample_number+os.sep+gene):
-			os.mkdir(sample_number+os.sep+gene)
-	surf1 = gene_list[len(gene_list)-2].split("_")
-	surf2 = gene_list[len(gene_list)-1].split("_")
-	subtype = surf1[1]+surf2[1]
-	report_arr[sample_number]['subtype'] = subtype
-	if subtype in ["H3N2", "H1pdmN1", "BHAvicBNAvic", "BHAyamBNAyam"]:
-		src = reference_path+subtype+'.fasta'
-		dest = sample_number+os.sep+sample_number+'_start_ref.fasta'
-		shutil.copyfile(src,dest)
-	cnt0 = get_cons2(sample_number, sample_number+os.sep+sample_number+'_start_ref.fasta', 's')
-	print("Subtype for sample: "+sample_number+" - "+subtype+"\n")
-	if not os.path.isfile(sample_number+os.sep+sample_number+'_ext_1.sam'):
-		if align_mode == "bwa-mem":
-			run_bwa(sample_number+os.sep+sample_number+'_start_ref.fasta', sample_number, '1')
-		elif align_mode == "minimap2":
-			run_minimap2(sample_number+os.sep+sample_number+'_start_ref.fasta', sample_number, '1')
-	else:
-		dest = sample_number+os.sep+sample_number+'_1.sam'
-		src = sample_number+os.sep+sample_number+'_ext_1.sam'
-		shutil.copyfile(src, dest)
-	run_samtools2(sample_number, sample_number+os.sep+sample_number+'_start_ref.fasta', '1', report_arr)
-	gl = parse_idxstats(sample_number, '1')
-	cnt = get_cons2(sample_number, sample_number+os.sep+sample_number+'_start_ref.fasta', '1')
-	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-	for gene in gene_list:
-		if len(cnt[gene])-1 != len(cnt[gene]["CON"]):
-			print("Warning! Possible indels found in gene "+gene+"! ("+str(len(cnt[gene])-1)+" != "+str(len(cnt[gene]["CON"]))+")")
-		print("Length of gene "+gene+" of sample "+sample_number+" after first run: "+str(len(cnt[gene])-1)+"\n")
-	print("Second run for sample "+sample_number+"\n")
-	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-	if align_mode == "bwa-mem":
-		run_bwa(sample_number+os.sep+sample_number+'_1.fasta', sample_number, '')
-	elif align_mode == "minimap2":
-		run_minimap2(sample_number+os.sep+sample_number+'_1.fasta', sample_number, '')
-	run_samtools2(sample_number, sample_number+os.sep+sample_number+'_1.fasta', '', report_arr)
-	gl = parse_idxstats(sample_number, '')
-	cnt1 = get_cons2(sample_number, sample_number+os.sep+sample_number+'_1.fasta', '')
-	call_variants(sample_number)
-	cover_ar = get_stats(cnt1, sample_number, sample_name, report_arr)
-	for gene in gene_list: 
-		mapping_arr[gene] = report_arr[sample_number][gene]['mapped_reads']
-	#print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-		copy_result(sample_number, gene, subtype)
-	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-
-
-	print("Write mapping data to report file for sample "+sample_number+"\n")
-	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-	report_arr['sample_list'].append(sample_number)
-	mapping_table = open('mapping_table.txt', 'a')
-	mapping_table.write(sample_name+'_'+sample_number+'\n')
-	sample_stats.write(sample_name+'_'+sample_number+'\n')
-	mapping_table.write(subtype+'\n')
-	sample_stats.write(subtype+'\n')
-	mapping_table.write(str(ttl)+'\n')
-	sample_stats.write(str(ttl)+'\n')
-	mapping_arr_sorted = sorted(mapping_arr.items(), key=operator.itemgetter(1), reverse=True)
-	for el in mapping_arr_sorted:
-		mapping_table.write("\t"+el[0]+"\t"+str(el[1])+"\t")
-		sample_stats.write("\t"+el[0]+"\t"+str(el[1])+"\t")
-		if cover_ar.get(el[0]):
-			tm = cover_ar.get(el[0])
-			mapping_table.write(str(tm['length'])+"\t"+str(tm['coverage'])+"\t"+str(tm['problems'])+"\t"+str(tm['basequality'])+"\t"+str(tm['mapquality'])+"\t"+str(tm['seqdiversity'])+"\n")
-			sample_stats.write(str(tm['length'])+"\t"+str(tm['coverage'])+"\t"+str(tm['problems'])+"\t"+str(tm['basequality'])+"\t"+str(tm['mapquality'])+"\t"+str(tm['seqdiversity'])+"\n")
-		else:
-			mapping_table.write("< than 1 percent of total reads or not selected for analysis\n")
-			sample_stats.write("< than 1 percent of total reads or not selected for analysis\n")
-	sample_stats.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-	mapping_table.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-	sample_stats.close()
-	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-	report_arr[sample_number]['finish_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+	mapping_table = open('mapping_table.txt', 'w')
+	mapping_table.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+'\n')
 	mapping_table.close()
-	html_report('report.html', report_arr, sample_number)
-print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-print("Finish")
+	report_arr = {}
+	report_arr['mode'] = mode
+	report_arr['align_mode'] = align_mode
+	report_arr['data_type'] = data_type
+	report_arr['list'] = args.list
+	report_arr['sample_list'] = []
+	for sample in sample_list:
+		print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
+		sample_splitted = sample.split()
+		sample_number = sample_splitted[0]
+		sample_name = sample_splitted[1]
+		plate_number = sample_splitted[2]
+		if len(sample_splitted) == 4:
+			index1 = sample_splitted[3]
+			index2 = ''
+		if len(sample_splitted) == 5:
+			index1 = sample_splitted[3]
+			index2 = sample_splitted[4]
+		report_arr[sample_number] = {}
+		report_arr[sample_number]['sample_number'] = sample_number
+		report_arr[sample_number]['sample_name'] = sample_name
+		report_arr[sample_number]['plate_number'] = plate_number
+		report_arr[sample_number]['index1'] = index1
+		report_arr[sample_number]['index2'] = index2
+		report_arr[sample_number]['start_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+		copy_data(sample_number, plate_number, data_type)
+		sample_stats = open(sample_number+os.sep+sample_number+"_stats.txt", "w")
+		sample_stats.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
+		if not os.path.isfile(sample_number+os.sep+sample_number+".fastq") and data_type == 'illumina':
+			fastqc_data(sample_number+os.sep+sample_number+'_R1.fastq.gz')
+			fastqc_data(sample_number+os.sep+sample_number+'_R2.fastq.gz')
+			trim_data(sample_number, trimmomatic_path)
+			ttl = conc_data(sample_number)
+			fastqc_data(sample_number+os.sep+sample_number+'.fastq')
+		elif not os.path.isfile(sample_number+os.sep+sample_number+".fastq") and data_type == 'nanopore':
+			fastqc_data(sample_number+os.sep+sample_number+'_unfiltered.fastq.gz')
+			trim_data(sample_number, trimmomatic_path)
+			fastqc_data(sample_number+os.sep+sample_number+'.fastq')
+			with open(sample_number+os.sep+sample_number+'.fastq', 'r') as fq:
+				fq_arr = fq.readlines()
+				ttl = len(fq_arr)//4
+		else:
+			with open(sample_number+os.sep+sample_number+'.fastq', 'r') as fq:
+				fq_arr = fq.readlines()
+				ttl = len(fq_arr)//4
+		report_arr[sample_number]['read_number'] = ttl	
+		mapping_arr = {}
+		print("First run for sample "+sample_number+"\n")
+		print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
+		#gene_list = run_centifuge(sample_number, mode, ttl, report_arr)
+		if not os.path.isfile(sample_number+os.sep+sample_number+'_ext_s.sam'):
+			if align_mode == "bwa-mem":
+				run_bwa(reference_path+mode+'.fasta', sample_number, 's')
+			elif align_mode == "minimap2":
+				run_minimap2(reference_path+mode+'.fasta', sample_number, 's')
+		else:
+			dest = sample_number+os.sep+sample_number+'_s.sam'
+			src = sample_number+os.sep+sample_number+'_ext_s.sam'
+			shutil.copyfile(src, dest)
+		run_samtools2(sample_number, reference_path+mode+'.fasta', 's', report_arr)
+		gene_list = parse_idxstats(sample_number, 's')
+		for gene in gene_list:
+			print(gene+"\n")
+			if not os.path.isdir(sample_number+os.sep+gene):
+				os.mkdir(sample_number+os.sep+gene)
+		subtype = 'nd'
+		if len(gene_list) > 2:
+			surf1 = gene_list[len(gene_list)-2].split("_")
+			surf2 = gene_list[len(gene_list)-1].split("_")
+			subtype = surf1[1]+surf2[1]
+		else:
+			with open(sample_number+os.sep+sample_number+'_s_idxstats.txt', 'r') as idx_file:
+				idx_arr = idx_file.readlines()
+			for el in idx_arr:
+				el_split = el.split('\t')
+				if el_split[0] == "*":
+					data_values = [int(el_split[3])]
+			data_names = ['Unmapped']
+			for gn in idx_arr:
+				gn_split = gn.split('\t')
+				if gn_split[0] != "*":
+					data_names.append(gn_split[0])
+					data_values.append(int(gn_split[2]))
+			ppl.pie(data_values, labels = data_names, autopct='%1.2f%%', radius = 1.1, explode = [0.15] + [0 for _ in range(len(data_names) - 1)] )
+			ppl.title('Reads distribution for sample: '+sample_name+'\nTotal: '+str(report_arr[sample_number]['read_number'])+' reads')
+			ppl.axis('equal')
+			ppl.savefig(sample_number+os.sep+sample_number+'_read_distribution.svg')
+			ppl.savefig(sample_number+os.sep+sample_number+'_read_distribution.png')
+			ppl.clf()
+			ppl.cla()
+			dest = 'result'+os.sep+sample_number+'_read_distribution.svg'
+			src = sample_number+os.sep+sample_number+'_read_distribution.svg'
+			shutil.copyfile(src, dest)
+			dest = 'result'+os.sep+sample_number+'_read_distribution.png'
+			src = sample_number+os.sep+sample_number+'_read_distribution.png'
+			shutil.copyfile(src, dest)
+			print("\nWarning! No segments found!\n")
+			continue
+		report_arr[sample_number]['subtype'] = subtype
+		if subtype in ["H3N2", "H1pdmN1", "BHAvicBNAvic", "BHAyamBNAyam"]:
+			src = reference_path+subtype+'.fasta'
+			dest = sample_number+os.sep+sample_number+'_start_ref.fasta'
+			shutil.copyfile(src,dest)
+		cnt0 = get_cons2(sample_number, sample_number+os.sep+sample_number+'_start_ref.fasta', 's')
+		print("Subtype for sample: "+sample_number+" - "+subtype+"\n")
+		if not os.path.isfile(sample_number+os.sep+sample_number+'_ext_1.sam'):
+			if align_mode == "bwa-mem":
+				run_bwa(sample_number+os.sep+sample_number+'_start_ref.fasta', sample_number, '1')
+			elif align_mode == "minimap2":
+				run_minimap2(sample_number+os.sep+sample_number+'_start_ref.fasta', sample_number, '1')
+		else:
+			dest = sample_number+os.sep+sample_number+'_1.sam'
+			src = sample_number+os.sep+sample_number+'_ext_1.sam'
+			shutil.copyfile(src, dest)
+		run_samtools2(sample_number, sample_number+os.sep+sample_number+'_start_ref.fasta', '1', report_arr)
+		gl = parse_idxstats(sample_number, '1')
+		cnt = get_cons2(sample_number, sample_number+os.sep+sample_number+'_start_ref.fasta', '1')
+		print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
+		for gene in gene_list:
+			if len(cnt[gene])-1 != len(cnt[gene]["CON"]):
+				print("Warning! Possible indels found in gene "+gene+"! ("+str(len(cnt[gene])-1)+" != "+str(len(cnt[gene]["CON"]))+")")
+			print("Length of gene "+gene+" of sample "+sample_number+" after first run: "+str(len(cnt[gene])-1)+"\n")
+		print("Second run for sample "+sample_number+"\n")
+		print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
+		if align_mode == "bwa-mem":
+			run_bwa(sample_number+os.sep+sample_number+'_1.fasta', sample_number, '')
+		elif align_mode == "minimap2":
+			run_minimap2(sample_number+os.sep+sample_number+'_1.fasta', sample_number, '')
+		run_samtools2(sample_number, sample_number+os.sep+sample_number+'_1.fasta', '', report_arr)
+		gl = parse_idxstats(sample_number, '')
+		cnt1 = get_cons2(sample_number, sample_number+os.sep+sample_number+'_1.fasta', '')
+		if run_fb == 'True':
+			call_variants(sample_number)
+		cover_ar = get_stats(cnt1, sample_number, sample_name, report_arr)
+		for gene in gene_list: 
+			mapping_arr[gene] = report_arr[sample_number][gene]['mapped_reads']
+		#print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
+			copy_result(sample_number, gene, subtype)
+		print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
+
+
+		print("Write mapping data to report file for sample "+sample_number+"\n")
+		print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
+		report_arr['sample_list'].append(sample_number)
+		mapping_table = open('mapping_table.txt', 'a')
+		mapping_table.write(sample_name+'_'+sample_number+'\n')
+		sample_stats.write(sample_name+'_'+sample_number+'\n')
+		mapping_table.write(subtype+'\n')
+		sample_stats.write(subtype+'\n')
+		mapping_table.write(str(ttl)+'\n')
+		sample_stats.write(str(ttl)+'\n')
+		mapping_arr_sorted = sorted(mapping_arr.items(), key=operator.itemgetter(1), reverse=True)
+		for el in mapping_arr_sorted:
+			mapping_table.write("\t"+el[0]+"\t"+str(el[1])+"\t")
+			sample_stats.write("\t"+el[0]+"\t"+str(el[1])+"\t")
+			if cover_ar.get(el[0]):
+				tm = cover_ar.get(el[0])
+				mapping_table.write(str(tm['length'])+"\t"+str(tm['coverage'])+"\t"+str(tm['problems'])+"\t"+str(tm['basequality'])+"\t"+str(tm['mapquality'])+"\t"+str(tm['seqdiversity'])+"\n")
+				sample_stats.write(str(tm['length'])+"\t"+str(tm['coverage'])+"\t"+str(tm['problems'])+"\t"+str(tm['basequality'])+"\t"+str(tm['mapquality'])+"\t"+str(tm['seqdiversity'])+"\n")
+			else:
+				mapping_table.write("< than 1 percent of total reads or not selected for analysis\n")
+				sample_stats.write("< than 1 percent of total reads or not selected for analysis\n")
+		sample_stats.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
+		mapping_table.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
+		sample_stats.close()
+		print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
+		report_arr[sample_number]['finish_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+		mapping_table.close()
+		html_report('report.html', report_arr, sample_number)
+	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
+	print("Finish")
