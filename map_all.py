@@ -15,6 +15,7 @@ import matplotlib.pyplot as ppl
 from Bio import SeqIO
 from PIL import Image
 from multiprocessing import Pool
+import matplotlib.ticker as ticker
 #import numpy as np
 
 #Path to required files
@@ -295,7 +296,7 @@ def get_cons2(sample_number, ref_file, step):
 		rc_arr = el.split()
 		tmp_arr = rc_arr[0].split('_')
 		if len(tmp_arr) < 3:
-			seg = rc_arr[0]
+			seg = tmp_arr[len(tmp_arr)-1]
 		else:
 			seg = tmp_arr[len(tmp_arr)-2] +'_'+ tmp_arr[len(tmp_arr)-1]
 		if seg not in rc['genes']:
@@ -497,7 +498,8 @@ def get_stats(rc_arr, sample_number, sample_name, report_arr):
 		v10vector = []
 		qua_lim_arr = []
 		qua_min_arr = []
-		cov_lim_arr = []
+		cov_100_arr = []
+		cov_10_arr = []
 		for i in range(0, len(ks)):
 			mvector.append(mSh)
 			vvector.append(mSh+vSh)
@@ -507,7 +509,8 @@ def get_stats(rc_arr, sample_number, sample_name, report_arr):
 			v10vector.append(mSh+v10Sh)
 			qua_lim_arr.append(30)
 			qua_min_arr.append(20)
-			cov_lim_arr.append(100)
+			cov_100_arr.append(100)
+			cov_10_arr.append(10)
 			if Shan[i] > mSh+v5Sh:
 				if 'Shannon5_SNPS' not in report_arr[sample_number][gene].keys():
 					report_arr[sample_number][gene]['Shannon5_SNPS'] = {}
@@ -522,8 +525,17 @@ def get_stats(rc_arr, sample_number, sample_name, report_arr):
 				table[i+1] += "\t"+str(Shan[i])
 			else:
 				table[i+1] += "\t"
-		ppl.plot(ks, Shan, 'b', ks, mvector, 'g--', ks, v3vector, 'r--', ks, v5vector, 'y--', ks, v10vector, 'k--')
+		wth = len(ks)/1000*6.4
+		fig, ax = ppl.subplots()
+		ax.plot(ks, Shan, 'b', ks, mvector, 'g--', ks, v3vector, 'r--', ks, v5vector, 'y--', ks, v10vector, 'k--')
 		ppl.title(sample_name+" "+gene+",\nmean Shannon enthropy = "+str(mSh)+",\nplus 3(red), 5(yellow), 10(black) stdev")
+		ax.xaxis.set_major_locator(ticker.MultipleLocator(round(len(ks)//10, -2)))
+		ax.xaxis.set_minor_locator(ticker.MultipleLocator(round(len(ks)//100, -1)))
+		ax.grid(which='major', color = 'k')
+		ax.minorticks_on()
+		ax.grid(which='minor', color = 'grey', linestyle = ':')
+		fig.set_figwidth(wth)
+		fig.set_figheight(5)
 		ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_Shannon.svg')
 		ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_Shannon.png')
 		ppl.clf()
@@ -532,13 +544,21 @@ def get_stats(rc_arr, sample_number, sample_name, report_arr):
 	#Рисование графика покрытия
 		print("\nDrawing coverage graph\n")
 		m = round(statistics.median(Cov), 2)
+		fig, ax = ppl.subplots()
 		if len(dp) > 0:
-			ppl.plot(ks, Cov, 'b', ks, cov_lim_arr, 'r--', dp[sample_name+'_'+gene][0], dp[sample_name+'_'+gene][1], 'g')
+			ax.plot(ks, Cov, 'b', ks, cov_100_arr, 'y--', ks, cov_10_arr, 'r--', dp[sample_name+'_'+gene][0], dp[sample_name+'_'+gene][1], 'g')
 			if len(ks) != len(dp[sample_name+'_'+gene][0]):
 				print("\nWarning! Segment length has changed after removing duplicates!")
 		else:
-			ppl.plot(ks, Cov, 'b', ks, cov_lim_arr, 'r--')
+			ax.plot(ks, Cov, 'b', ks, cov_100_arr, 'y--', ks, cov_10_arr, 'r--')
 		ppl.title(sample_name+" "+gene+",\n coverage before (blue) and after (green) removal of PCR duplicates,\nmedian coverage before rmdup = "+str(m))
+		ax.xaxis.set_major_locator(ticker.MultipleLocator(round(len(ks)//10, -2)))
+		ax.xaxis.set_minor_locator(ticker.MultipleLocator(round(len(ks)//100, -1)))
+		ax.grid(which='major', color = 'k')
+		ax.minorticks_on()
+		ax.grid(which='minor', color = 'grey', linestyle = ':')
+		fig.set_figwidth(wth)
+		fig.set_figheight(5)
 		ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_Coverage.svg')
 		ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_Coverage.png')
 		print("\nCoverage graph ready\n")
@@ -547,8 +567,16 @@ def get_stats(rc_arr, sample_number, sample_name, report_arr):
 	#Рисование графика качества прочтения
 		print("\nDrawing read quality graph\n")
 		bqm = round(statistics.median(bq_arr), 2)
-		ppl.plot(ks, bq_arr, 'b', ks, qua_lim_arr, 'g--', ks, qua_min_arr, 'y--')
+		fig, ax = ppl.subplots()
+		ax.plot(ks, bq_arr, 'b', ks, qua_lim_arr, 'g--', ks, qua_min_arr, 'y--')
 		ppl.title(sample_name+" "+gene+",\nmedian base quality = "+str(bqm))
+		ax.xaxis.set_major_locator(ticker.MultipleLocator(round(len(ks)//10, -2)))
+		ax.xaxis.set_minor_locator(ticker.MultipleLocator(round(len(ks)//100, -1)))
+		ax.grid(which='major', color = 'k')
+		ax.minorticks_on()
+		ax.grid(which='minor', color = 'grey', linestyle = ':')
+		fig.set_figwidth(wth)
+		fig.set_figheight(5)
 		ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_BaseQuality.svg')
 		ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_BaseQuality.png')
 		print("\nQuality graph ready\n")
@@ -557,8 +585,16 @@ def get_stats(rc_arr, sample_number, sample_name, report_arr):
 	#Рисование графика качества выравнивания
 		print("\nDrawing mapping quality graph\n")
 		mqm = round(statistics.median(mq_arr), 2)
-		ppl.plot(ks, mq_arr, 'b', ks, qua_lim_arr, 'r--')
+		fig, ax = ppl.subplots()
+		ax.plot(ks, mq_arr, 'b', ks, qua_lim_arr, 'r--')
 		ppl.title(sample_name+" "+gene+",\nmedian mapping quality = "+str(mqm))
+		ax.xaxis.set_major_locator(ticker.MultipleLocator(round(len(ks)//10, -2)))
+		ax.xaxis.set_minor_locator(ticker.MultipleLocator(round(len(ks)//100, -1)))
+		ax.grid(which='major', color = 'k')
+		ax.minorticks_on()
+		ax.grid(which='minor', color = 'grey', linestyle = ':')
+		fig.set_figwidth(wth)
+		fig.set_figheight(5)
 		ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_MapQuality.svg')
 		ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_MapQuality.png')
 		print("\nQuality graph ready\n")
@@ -577,8 +613,16 @@ def get_stats(rc_arr, sample_number, sample_name, report_arr):
 			sdmv_vector.append(sdm + vd)
 			sdmv2_vector.append(sdm + vd*2)
 			sdmv3_vector.append(sdm + vd *3)
-		ppl.plot(ks, Div, 'b', ks, sdm_vector, 'g--', ks, sdmv_vector, 'r--', ks, sdmv2_vector, 'y--',ks, sdmv3_vector, 'k--')
+		fig, ax = ppl.subplots()
+		ax.plot(ks, Div, 'b', ks, sdm_vector, 'g--', ks, sdmv_vector, 'r--', ks, sdmv2_vector, 'y--',ks, sdmv3_vector, 'k--')
 		ppl.title(sample_name+" "+gene+",\nmean sequence diversity = "+str(sdm)+",\nplus 3(red), 5(yellow), 10(black) stdev")
+		ax.xaxis.set_major_locator(ticker.MultipleLocator(round(len(ks)//10, -2)))
+		ax.xaxis.set_minor_locator(ticker.MultipleLocator(round(len(ks)//100, -1)))
+		ax.grid(which='major', color = 'k')
+		ax.minorticks_on()
+		ax.grid(which='minor', color = 'grey', linestyle = ':')
+		fig.set_figwidth(wth)
+		fig.set_figheight(5)
 		ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_SeqDiversity.svg')
 		ppl.savefig(sample_number+os.sep+gene+os.sep+sample_number+'_'+gene+'_SeqDiversity.png')
 		print("\nSequence diversity ready\n")
@@ -628,56 +672,6 @@ def run_minimap2(ref_file, sample_number, step):
 	os.system(minimap_cmd)
 	print("\nMinimap2 alignment finished\n")
 	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-
-def run_centifuge(sample_number, mode, total, report_arr):
-	#Определение сегментов для выравнивания
-	print("\nUsing Centrifuge for selection of segments")
-	centrifuge_cmd = centrifuge_path+'centrifuge-class.exe -x '+reference_path+mode+' -p '+str(os.cpu_count())+' -U '+sample_number+os.sep+sample_number+'.fastq --report-file '+sample_number+os.sep+sample_number+'_report.txt --min-hitlen 15 > '+os.devnull
-	os.system(centrifuge_cmd)
-	print("Centrifuge classification finished\n")
-	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-	with open(sample_number+os.sep+sample_number+'_report.txt', 'r') as rep:
-		rep_arr = rep.readlines()
-	seg_list = {'1':'root', '2':'Influenza_A', '3':'A_PB2', '4':'A_PB1', '5':'A_PA', '6':'A_H1', '7':'A_H2', '8':'A_H3', '9':'A_H4', '10':'A_H5', '11':'A_H6', '12':'A_H7', '13':'A_H8', '14':'A_H9', '15':'A_H10', '16':'A_H11', '17':'A_H12', '18':'A_H13', '19':'A_H14', '20':'A_H15', '21':'A_H16', '22':'A_H17', '23':'A_H18', '24':'A_NP', '25':'A_N1', '26':'A_N2', '27':'A_N3', '28':'A_N4', '29':'A_N5', '30':'A_N6', '31':'A_N7', '32':'A_N8', '33':'A_N9', '34':'A_N10', '35':'A_N11', '36':'A_M', '37':'A_NS', '38':'Influenza_B', '39':'B_PB2', '40':'B_PB1', '41':'B_PA', '42':'B_BHAvic', '43': 'B_BHAyam', '44': 'B_NP', '45':'B_BNAvic', '46':'B_BNAyam', '47':'B_M', '48':'B_NS'}
-	surface = [['A_H1', 'A_H2', 'A_H3', 'A_H4', 'A_H5', 'A_H6', 'A_H7', 'A_H8', 'A_H9', 'A_H10', 'A_H11', 'A_H12', 'A_H13', 'A_H14', 'A_H15', 'A_H16', 'A_H17','A_H18', 'B_BHAvic', 'B_BHAyam'], ['A_N1', 'A_N2', 'A_N3', 'A_N4', 'A_N5', 'A_N6', 'A_N7', 'A_N8', 'A_N9', 'A_N10', 'A_N11', 'B_BNAvic', 'B_BNAyam']]
-	surf_list = [{},{}]
-	gene_list = []
-	report_arr[sample_number]['centrifuge'] = {}
-	if data_type == 'illumina':
-		sens = 500
-	elif data_type =='nanopore':
-		sens = 25
-	for el in rep_arr:
-		els = el.split()
-		if els[0] != "name":
-			seg_name = seg_list[els[0]]
-			report_arr[sample_number][seg_name] = {}
-			report_arr[sample_number][seg_name]['mapped_reads'] = int(els[4])
-			report_arr[sample_number]['centrifuge'][seg_name] = int(els[4])
-			if int(els[4]) > sens:
-				if seg_name in surface[0]:
-					surf_list[0][seg_name] = int(els[4])
-				elif seg_name in surface[1]:
-					surf_list[1][seg_name] = int(els[4])
-				else:
-					gene_list.append(seg_name)
-	if len(surf_list[0]) > 0:
-		surf_list0_sorted = sorted(surf_list[0].items(), key=operator.itemgetter(1), reverse=True)
-		gene_list.append(surf_list0_sorted[0][0])
-	if len(surf_list[1]) > 0:
-		surf_list1_sorted = sorted(surf_list[1].items(), key=operator.itemgetter(1), reverse=True)
-		gene_list.append(surf_list1_sorted[0][0])
-	refs = []
-	for seq_record in SeqIO.parse(reference_path+mode+'.fasta', 'fasta'):
-		refs.append(seq_record)
-	with open(sample_number+os.sep+sample_number+'_start_ref.fasta', 'w') as f:
-		for gene in gene_list:
-			for ref in refs:
-				if gene == ref.id:
-					f.write('>'+ref.id+'\n'+str(ref.seq)+'\n')
-	report_arr[sample_number]['gene_list'] = gene_list
-	print(datetime.now().strftime("%Y-%m-%d %H:%M:%S")+"\n")
-	return gene_list
 
 def call_variants(sample_number):
 	#Поиск SNP c использованием FreeBayes
@@ -906,6 +900,8 @@ if __name__ == "__main__":
 			surf1 = gene_list[len(gene_list)-2].split("_")
 			surf2 = gene_list[len(gene_list)-1].split("_")
 			subtype = surf1[1]+surf2[1]
+		elif len(gene_list) <= 2 and len(gene_list) > 0 and gene_list[0] in ['nCoV2019']:
+			subtype = gene_list[0]
 		else:
 			with open(sample_number+os.sep+sample_number+'_s_idxstats.txt', 'r') as idx_file:
 				idx_arr = idx_file.readlines()
